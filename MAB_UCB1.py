@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 n = 5
 
 # Variance
-variance = 1
+variance = 0.3
 
 # Acquisition function
 #acq_func = "UCB1" #Used in paper
-acq_func = "d-PAC" #Confidence interval from [25] Theorem 8
-#acq_func = "UCB1_Normal"
+#acq_func = "d-PAC" #Confidence interval from [25] Theorem 8
+acq_func = "UCB1_Normal"
 
 # Sample Budget
 B = 600
@@ -69,6 +69,7 @@ for acq in ["UCB1","d-PAC"]:
         plt.xlabel("Number of arm pulls")
         plt.ylabel("Confidence Interval")
         plt.show()
+
 
 # CLASS: BANDIT to store information about each bandit in the game
 class Bandit:
@@ -178,6 +179,7 @@ class Game:
                 #Plot distribution
                 if self.total_trials % plot_n == 0:
                     print('trial: ' + str(self.total_trials))
+                    print(self.St)
                     y = np.zeros([1,self.n]).reshape(-1,)
                     no_pulls = np.zeros([1,self.n]).reshape(-1,)
                     for i in range(self.n):
