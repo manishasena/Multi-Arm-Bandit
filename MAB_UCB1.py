@@ -1,7 +1,8 @@
 
 # Implementation of MAB with different acquisition functions
 
-#### USER INPUTS ####
+import numpy as np
+import matplotlib.pyplot as plt
 
 # Number of arms
 n = 5
@@ -10,7 +11,8 @@ n = 5
 variance = 1
 
 # Acquisition function
-acq_func = "UCB1"
+#acq_func = "UCB1" #Used in paper
+acq_func = "d-PAC" #Confidence interval from [25] Theorem 8
 #acq_func = "UCB1_Normal"
 
 # Sample Budget
@@ -24,7 +26,8 @@ sample_method = "Adaptive"
 mean_threshold = 0.5
 
 # False Discovery Rate
-delta = 0.1
+delta = 0.05
+d_dash = False
 
 # TPR
 TPR = True
@@ -36,12 +39,36 @@ c = 4
 initial_loop = 2
 
 # Visualise plots
-visualise = False
+visualise = True
 
-######################
+# Plot out every 'how  many' iterations
+plot_n = 100
 
-import numpy as np
-import matplotlib.pyplot as plt
+## Plotting confidence bounds
+#delta_dash = delta
+if d_dash == True:
+    delta_dash = delta/(6.4*np.log(36/delta))
+else:
+    delta_dash = delta
+t = np.linspace(1,B)
+
+for acq in ["UCB1","d-PAC"]:
+    if acq == "UCB1":
+        y = np.sqrt((c*np.log(np.log2(2*t)/delta))/t)
+        plt.plot(t,y)
+        plt.title(["UCB1" + "delta: " +str(delta) + " c:" + str(c)])
+        plt.xlabel("Number of arm pulls")
+        plt.ylabel("Confidence Interval")
+        plt.show()
+    elif acq == "d-PAC":
+        e = np.exp(1)
+        val = 2*np.log(1/delta) + 6*np.log(np.log(1/delta)) + 3*np.log(np.log(e*t/2))
+        y = np.sqrt(val/t)
+        plt.plot(t,y)
+        plt.title(["d-PAC: " + "delta: " +str(delta)])
+        plt.xlabel("Number of arm pulls")
+        plt.ylabel("Confidence Interval")
+        plt.show()
 
 # CLASS: BANDIT to store information about each bandit in the game
 class Bandit:
@@ -111,7 +138,8 @@ class Game:
             y[i] = self.bandit_dictionary[str(i+1)].sample_mean
             no_pulls[i] = self.bandit_dictionary[str(i+1)].bandit_trial 
 
-        print(no_pulls)
+        print('trial: ' + str(self.total_trials))
+        print('Number of arm pulls: ' + str(no_pulls))
         if visualise == True:
             plt = Game.Visualise(self,y,delta,mean_threshold,acq_func)
             plt.show()
@@ -148,16 +176,15 @@ class Game:
                 self = Game.Update_St(self,delta,acq_func)
                 
                 #Plot distribution
-                if self.total_trials % 100 == 0:
-                    print('trial' + str(self.total_trials))
-                    print(self.St)
+                if self.total_trials % plot_n == 0:
+                    print('trial: ' + str(self.total_trials))
                     y = np.zeros([1,self.n]).reshape(-1,)
                     no_pulls = np.zeros([1,self.n]).reshape(-1,)
                     for i in range(self.n):
                         y[i] = self.bandit_dictionary[str(i+1)].sample_mean
                         no_pulls[i] = self.bandit_dictionary[str(i+1)].bandit_trial 
 
-                    print(no_pulls)
+                    print('Number of arm pulls: ' + str(no_pulls))
                     if visualise == True:
                         plt = Game.Visualise(self,y,delta,mean_threshold,acq_func)
                         plt.show()
@@ -170,8 +197,10 @@ class Game:
         color = ['g','r','b','k','y','m']
         ranges = np.linspace(n,0,n)
         
-        delta_dash = delta/(6.4*np.log(36/delta))
-        #delta_dash = delta
+        if d_dash == True:
+            delta_dash = delta/(6.4*np.log(36/delta))
+        else:
+            delta_dash = delta
         
         dy = np.zeros([1,self.n]).reshape(-1,)
         for k in ranges:
@@ -194,6 +223,11 @@ class Game:
         if acq_func == "UCB1":
             Confidence_value = np.sqrt((c*np.log(np.log2(2*t)/d))/(t))
             
+        elif acq_func == "d-PAC":
+            e = np.exp(1)
+            val = 2*np.log(1/d) + 6*np.log(np.log(1/d)) + 3*np.log(np.log(e*t/2))
+            Confidence_value = np.sqrt(val/t)
+            
         elif acq_func == "UCB1_Normal":
             
             q = bandit_info.q
@@ -206,12 +240,11 @@ class Game:
     def Update_St(self, delta,acq_func):
         
         # Apply Benjamini-Hochberg
-        delta_dash = delta/(6.4*np.log(36/delta))
-        #delta_dash = delta
-
-        if self.total_trials % 100 == 0:
-            print(self.total_trials)
-        
+        if d_dash == True:
+            delta_dash = delta/(6.4*np.log(36/delta))
+        else:
+            delta_dash = delta
+ 
         # Discover St set
         K_LENGTH = 0
         for k in range(self.n):
@@ -238,18 +271,15 @@ class Game:
 
 G = Game(n,acq_func,delta,TPR)
 
+print("True and Sample Mean for each Arm")
+print("Number of times each arm was pulled")
 for i in range(n):
-    print(i+1)
-    print(['True mean:', G.bandit_dictionary[str(i+1)].true_mean])
-    print(['Sample mean:', G.bandit_dictionary[str(i+1)].sample_mean])
-    print(['Trials:', G.bandit_dictionary[str(i+1)].bandit_trial])
+    print("")
+    print("Arm: " + str(i+1))
+    print('True mean:', G.bandit_dictionary[str(i+1)].true_mean)
+    print('Sample mean:', G.bandit_dictionary[str(i+1)].sample_mean)
+    print('Trials:', G.bandit_dictionary[str(i+1)].bandit_trial)
     
+    
+print("Arm's that are above threshold:")
 print(G.St)
-#delta_dash = delta
-delta_dash = delta/(6.4*np.log(36/delta))
-t = np.linspace(1,B)
-y = np.sqrt((c*np.log(np.log2(2*t)/delta))/t)
-
-plt.plot(t,y)
-plt.title(["delta: " +str(delta) + " c:" + str(c)])
-plt.show()
