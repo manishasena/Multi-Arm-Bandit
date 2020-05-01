@@ -11,10 +11,10 @@ variance = 1
 
 # Acquisition function
 acq_func = "UCB1"
-acq_func = "UCB1_Normal"
+#acq_func = "UCB1_Normal"
 
 # Sample Budget
-B = 50
+B = 600
 
 # Sampling method
 #sample_method = "Uniform"
@@ -24,7 +24,7 @@ sample_method = "Adaptive"
 mean_threshold = 0.5
 
 # False Discovery Rate
-delta = 0.05
+delta = 0.1
 
 # TPR
 TPR = True
@@ -34,6 +34,9 @@ c = 4
 
 # Initial sampling
 initial_loop = 2
+
+# Visualise plots
+visualise = False
 
 ######################
 
@@ -93,10 +96,25 @@ class Game:
             self.bandit_dictionary[str(i+1)] = Bandit(self.n,i+1)
         
         # Conduct and initial sample from each bandit
+        
         for il in range(initial_loop):
             for i in range(self.n):
                 self.bandit_dictionary[str(i+1)].Sample_Bandit()
                 self.total_trials += 1
+            
+        #Plot distribution
+        
+        #print('trial' + str(self.total_trials))
+        y = np.zeros([1,self.n]).reshape(-1,)
+        no_pulls = np.zeros([1,self.n]).reshape(-1,)
+        for i in range(self.n):
+            y[i] = self.bandit_dictionary[str(i+1)].sample_mean
+            no_pulls[i] = self.bandit_dictionary[str(i+1)].bandit_trial 
+
+        print(no_pulls)
+        if visualise == True:
+            plt = Game.Visualise(self,y,delta,mean_threshold,acq_func)
+            plt.show()
 
         # Sample according to sampling method
         if sample_method == "Uniform":
@@ -113,7 +131,7 @@ class Game:
                 arm_next = 1
                 
                 for i in range(self.n):
-                    if (i not in self.St):
+                    if ((i+1) not in self.St):
 
                         bandit_info = self.bandit_dictionary[str(i+1)]
                         
@@ -128,7 +146,45 @@ class Game:
                 
                 # Update St
                 self = Game.Update_St(self,delta,acq_func)
+                
+                #Plot distribution
+                if self.total_trials % 100 == 0:
+                    print('trial' + str(self.total_trials))
+                    print(self.St)
+                    y = np.zeros([1,self.n]).reshape(-1,)
+                    no_pulls = np.zeros([1,self.n]).reshape(-1,)
+                    for i in range(self.n):
+                        y[i] = self.bandit_dictionary[str(i+1)].sample_mean
+                        no_pulls[i] = self.bandit_dictionary[str(i+1)].bandit_trial 
+
+                    print(no_pulls)
+                    if visualise == True:
+                        plt = Game.Visualise(self,y,delta,mean_threshold,acq_func)
+                        plt.show()
                     
+    
+    def Visualise(self,mean,delta,mu_threshold,acq_func):
+    
+        plt.style.use('seaborn-whitegrid')
+        x = np.linspace(1,self.n,self.n)
+        color = ['g','r','b','k','y','m']
+        ranges = np.linspace(n,0,n)
+        
+        delta_dash = delta/(6.4*np.log(36/delta))
+        #delta_dash = delta
+        
+        dy = np.zeros([1,self.n]).reshape(-1,)
+        for k in ranges:
+            k = int(k)
+            for i in range(self.n):
+                dy[i] = Game.Confidence_Interval(self,self.bandit_dictionary[str(i+1)],delta_dash*(k+1)/self.n,c,acq_func)
+            
+            #plt.errorbar(x, mean, yerr=dy, fmt='o', color='black',ecolor=color[k], elinewidth=20-3*k, capsize=20-3*k)
+            plt.errorbar(x, mean, yerr=dy, fmt='o', color='black',ecolor=color[k], elinewidth=3*k+1, capsize=3*k+1)
+
+        plt.axhline(mu_threshold)
+
+        return plt
     
     def Confidence_Interval(self,bandit_info,d,c,acq_func):
         
@@ -136,7 +192,6 @@ class Game:
         mean = bandit_info.sample_mean
         
         if acq_func == "UCB1":
-            
             Confidence_value = np.sqrt((c*np.log(np.log2(2*t)/d))/(t))
             
         elif acq_func == "UCB1_Normal":
@@ -152,7 +207,10 @@ class Game:
         
         # Apply Benjamini-Hochberg
         delta_dash = delta/(6.4*np.log(36/delta))
-        delta_dash = delta
+        #delta_dash = delta
+
+        if self.total_trials % 100 == 0:
+            print(self.total_trials)
         
         # Discover St set
         K_LENGTH = 0
@@ -187,8 +245,11 @@ for i in range(n):
     print(['Trials:', G.bandit_dictionary[str(i+1)].bandit_trial])
     
 print(G.St)
+#delta_dash = delta
+delta_dash = delta/(6.4*np.log(36/delta))
 t = np.linspace(1,B)
-y = 8*np.log(t)
+y = np.sqrt((c*np.log(np.log2(2*t)/delta))/t)
 
 plt.plot(t,y)
+plt.title(["delta: " +str(delta) + " c:" + str(c)])
 plt.show()
