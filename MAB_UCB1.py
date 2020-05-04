@@ -13,7 +13,8 @@ variance = 0.3
 # Acquisition function
 #acq_func = "UCB1" #Used in paper
 #acq_func = "d-PAC" #Confidence interval from [25] Theorem 8
-acq_func = "UCB1_Normal"
+#acq_func = "UCB1_Normal"
+acq_func = "UCB1_derived" #Used in paper
 
 # Sample Budget
 B = 600
@@ -52,7 +53,7 @@ else:
     delta_dash = delta
 t = np.linspace(1,B)
 
-for acq in ["UCB1","d-PAC"]:
+for acq in ["UCB1","d-PAC","UCB1_derived"]:
     if acq == "UCB1":
         y = np.sqrt((c*np.log(np.log2(2*t)/delta))/t)
         plt.plot(t,y)
@@ -66,6 +67,13 @@ for acq in ["UCB1","d-PAC"]:
         y = np.sqrt(val/t)
         plt.plot(t,y)
         plt.title(["d-PAC: " + "delta: " +str(delta)])
+        plt.xlabel("Number of arm pulls")
+        plt.ylabel("Confidence Interval")
+        plt.show()
+    elif acq == "UCB1_derived":
+        y = np.sqrt((-1*np.log(delta))/(2*t))
+        plt.plot(t,y)
+        plt.title(["UCB1 Derived " + "delta: " +str(delta)])
         plt.xlabel("Number of arm pulls")
         plt.ylabel("Confidence Interval")
         plt.show()
@@ -236,6 +244,9 @@ class Game:
             term1 = (np.sum(q) - t*mean**2)/(t-1)
             term2 = np.log(self.total_trials - 1)/t
             Confidence_value = np.sqrt(16*term1*term2)
+
+        elif acq_func == "UCB1_derived":
+            Confidence_value = np.sqrt((-1*np.log(d))/(2*t))
         
         return Confidence_value
     
